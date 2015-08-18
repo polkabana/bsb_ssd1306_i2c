@@ -1,6 +1,6 @@
 /*
  * ssd1306_i2c_module.c - Python bindings for SSD1306 OLED display via I2C bus
- * Copyright (C) 2015 mail@aliaksei.org
+ * Copyright (C) 2015, mail@aliaksei.org
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * Foundation, Inc.
  */
 #include <Python.h>
 #include <structmember.h>
@@ -26,9 +26,7 @@
 #include <linux/i2c-dev.h>
 #include "fonts.h"
 
-
 #define I2CDEV_MAXPATH	128
-#define I2C_ADDRESS		0x3c
 
 #define SSD1306_WIDTH	128
 #define SSD1306_HEIGHT	64
@@ -47,8 +45,6 @@ typedef struct {
 	uint8_t height;
 
 	unsigned char *font;
-	int font5x7, fontnum8x16;
-	int font_size;
 	int color, bg_color;
 	int cursor_x;
 	int cursor_y;
@@ -61,17 +57,14 @@ static PyMemberDef ssd1306_members[] = {
 		"Cursor X position"},
 	{"cursor_y", T_INT, offsetof(SSD1306PyObject, cursor_y), 0,
 		"Cursor Y position"},
-	{"FONT_5x7", T_INT, offsetof(SSD1306PyObject, font5x7), READONLY,
-		"FONT_5x7 constant"},
-	{"FONT_NUM8x16", T_INT, offsetof(SSD1306PyObject, fontnum8x16), READONLY,
-		"FONT_NUM8x16 constant"},
 	{NULL}  /* Sentinel */
 };
 
 
 static void ssd1306_command(SSD1306PyObject *self, uint8_t c);
 static void ssd1306_pixel(SSD1306PyObject *self, int x, int y, int color);
-static void ssd1306_char(SSD1306PyObject *self, unsigned char ch );
+static int ssd1306_char(SSD1306PyObject *self, unsigned char ch);
+static int ssd1306_charWidth(SSD1306PyObject *self, unsigned char ch);
 static void swap(int *a, int *b);
 
 
@@ -103,11 +96,7 @@ ssd1306_init(SSD1306PyObject *self, PyObject *args, PyObject *kwds) {
 	self->cursor_x = 0;
 	self->cursor_y = 0;
 
-	self->font = font5x7;
-	self->font_size = 1;
-	self->font5x7 = FONT_5x7;
-	self->fontnum8x16 = FONT_NUM8x16;
-
+	self->font = System5x7;
 
 	//write command to the screen registers.
 	ssd1306_command(self, SSD1306_CMD_DISPLAY_OFF);//display off
@@ -148,8 +137,8 @@ ssd1306_update(SSD1306PyObject *self, PyObject *unused) {
 
 	for(m=0; m<8; m++) {
 		ssd1306_command(self, 0xb0+m);	// page0-page1
-		ssd1306_command(self, 0x00);		// low column start address
-		ssd1306_command(self, 0x10);		// high column start address
+		ssd1306_command(self, 0x00);	// low column start address
+		ssd1306_command(self, 0x10);	// high column start address
 
 		tmpbuf[0] = 0x40;
 		for (n=0; n<SSD1306_WIDTH; n++) {
@@ -366,29 +355,29 @@ ssd1306_setCursor(SSD1306PyObject *self, PyObject *args) {
 }
 
 static PyObject *
-ssd1306_setFont(SSD1306PyObject *self, PyObject *args, PyObject *kwds) {
-	int font, size = 1;
-	static char *kwlist[] = {"font", "size", NULL};
+ssd1306_setFont(SSD1306PyObject *self, PyObject *args) {
+	int i;
+	unsigned char *font;
+	font_info *f = fonts_table;
 
-	if (!PyArg_ParseTupleAndKeywords(args, kwds, "i|i", kwlist, &font, &size)) {
+	if (!PyArg_ParseTuple(args, "s",  &font)) {
 		return;
 	}
-
-	self->font_size = size;
-
-	if (font == FONT_5x7) {
-		self->font = font5x7;
+	
+	while (f->name != NULL) {
+		if (strcmp(f->name, font) == 0) {
+			self->font = f->data;
+			break;
+		}
+		f++;
 	}
-	// if (font == FONT_NUM8x16) {
-		// self->font = fixednums8x16;
-	// }
 
 	Py_RETURN_NONE;
 }
 
 static PyObject *
 ssd1306_drawChar(SSD1306PyObject *self, PyObject *args, PyObject *kwds) {
-	int x = self->cursor_x, y = self->cursor_y, size = self->font_size;
+	int x = self->cursor_x, y = self->cursor_y, size = 1;
 	int color = 1, bg = 0;
 	unsigned char ch;
 	static char *kwlist[] = {"ch", "x", "y", "color", NULL};
@@ -408,7 +397,7 @@ ssd1306_drawChar(SSD1306PyObject *self, PyObject *args, PyObject *kwds) {
 
 static PyObject *
 ssd1306_writeString(SSD1306PyObject *self, PyObject *args, PyObject *kwds) {
-	int i;
+	int i, w;
 	unsigned char *str, ch;
 	int x = self->cursor_x, y = self->cursor_y, color = self->color;
 	static char *kwlist[] = {"str", "x", "y", "color", NULL};
@@ -424,14 +413,15 @@ ssd1306_writeString(SSD1306PyObject *self, PyObject *args, PyObject *kwds) {
 
 	for(i=0; i<strlen(str); i++) {
 		ch = str[i];
+		w = ssd1306_charWidth(self, ch);
 		ssd1306_char(self, ch);
 		
-		if ((self->cursor_x + (font[0] * self->font_size) + (font[2] * self->font_size)) <= self->width) {
-			self->cursor_x += (font[0] * self->font_size) + (font[2] * self->font_size);
+		if ((self->cursor_x + w + 1) <= self->width) {
+			self->cursor_x += w + 1;
 		}
-		else if ((self->cursor_y + (font[1] * self->font_size) + (font[3] * self->font_size)) <= self->height) {
+		else if ((self->cursor_y + font[FONT_HEIGHT] + 1) <= self->height) {
 			self->cursor_x = 0;
-			self->cursor_y += (font[1] * self->font_size) + (font[3] * self->font_size);
+			self->cursor_y += font[FONT_HEIGHT] + 1;
 		}
 	}
 
@@ -473,48 +463,103 @@ void ssd1306_pixel(SSD1306PyObject *self, int x, int y, int color) {
 	}
 }
 
+
 static
-void ssd1306_char(SSD1306PyObject *self, unsigned char ch) {
-	int x = self->cursor_x, y = self->cursor_y, size = self->font_size, color = self->color, bg = self->bg_color;
-	int i, j;
+int ssd1306_char(SSD1306PyObject *self, unsigned char ch) {
+	int bX = self->cursor_x, bY = self->cursor_y, fgcolour = self->color, bgcolour = self->bg_color;
+	int i, j, k;
+	char c = ch;
 	unsigned char *font = self->font;
-    PyObject *pArgs;
+	uint8_t width = 0;
+	uint8_t height = font[FONT_HEIGHT];
+	uint8_t bytes = (height + 7) / 8;
+	uint8_t firstChar = font[FONT_FIRST_CHAR];
+	uint8_t charCount = font[FONT_CHAR_COUNT];
+	uint16_t index = 0;
 
-	/*if ((x >= self->width) || // Clip right
-		(y >= self->height) || // Clip bottom
-		((x + font[0] * size) < 0) || // Clip left
-		((y + font[1] * size) < 0))   // Clip top
-		return;*/
+	if (bX >= self->width || bY >= self->height) return -1;
 
-	for (i=0; i<font[0]; i++) {
-		uint8_t line = 0xA5;
-		
-		if ((ch >= font[4]) && (ch <= font[4] + font[5])) {
-			line = font[FONT_HEADER_SIZE + ((ch - font[4]) * font[0]) + i];
+	if (c == ' ') {
+		width = ssd1306_charWidth(self, ' ');
+		PyObject *pArgs = Py_BuildValue("iiiii", bX, bY, bX + width, bY + height, bgcolour);
+		ssd1306_fillRect(self, pArgs);
+
+		return width;
+	}
+
+	if (c < firstChar || c >= (firstChar + charCount)) return 0;
+	c -= firstChar;
+
+	if (font[FONT_LENGTH] == 0 && font[FONT_LENGTH + 1] == 0) {
+		// zero length is flag indicating fixed width font (array does not contain width data entries)
+		width = font[FONT_FIXED_WIDTH];
+		index = c * bytes * width + FONT_WIDTH_TABLE;
+	} else {
+		// variable width font, read width data, to get the index
+		for (i = 0; i < c; i++) {
+			index += font[FONT_WIDTH_TABLE + i];
 		}
+		index = index * bytes + charCount + FONT_WIDTH_TABLE;
+		width = font[FONT_WIDTH_TABLE + c];
+	}
 
-		for (j=0; j<font[1]; j++) {
-			if (line & 0x01) {
-				if (size == 1) { // default size
-					ssd1306_pixel(self, x+i, y+j, color);
-				}
-				else {  // big size
-					pArgs = Py_BuildValue("iiiii", x+(i*size), y+(j*size), size, size, color);
-					ssd1306_fillRect(self, pArgs);
-				}
-			} else if (bg != color) {
-				if (size == 1) { // default size
-					ssd1306_pixel(self, x+i, y+j, bg);
-				}
-				else {  // big size
-					pArgs = Py_BuildValue("iiiii", x+i*size, y+j*size, size, size, bg);
-					ssd1306_fillRect(self, pArgs);
+	if (bX < -width || bY < -height) return width;
 
+	// last but not least, draw the character
+	for (j = 0; j < width; j++) { // Width
+		// for (i = bytes - 1; i < 254; i--) { // Vertical Bytes
+		for (i = 0; i < bytes; i++) { // Vertical Bytes
+			uint8_t data = font[index + j + (i * width)];
+			int offset = (i * 8);
+
+			if ((i == bytes - 1) && bytes > 1) {
+				offset = height - 8;
+			} else if (height<8) {
+				offset = height - 7;
+			}
+
+			for (k = 0; k < 8; k++) { // Vertical bits
+				if ((offset+k >= i*8) && (offset+k <= height)) {
+					if (data & (1 << k)) {
+						ssd1306_pixel(self, bX + j, bY + offset + k, fgcolour);
+					} else {
+						ssd1306_pixel(self, bX + j, bY + offset + k, bgcolour);
+					}
 				}
 			}
-			line >>= 1;
 		}
 	}
+
+	return width;
+}
+
+static
+int ssd1306_charWidth(SSD1306PyObject *self, unsigned char ch) {
+    char c = ch;
+
+    // Space is often not included in font so use width of 'n'
+    if (c == ' ') c = 'n';
+    uint8_t width = 0;
+
+    uint8_t firstChar = self->font[FONT_FIRST_CHAR];
+    uint8_t charCount = self->font[FONT_FIRST_CHAR];
+
+    uint16_t index = 0;
+
+    if (c < firstChar || c >= (firstChar + charCount)) {
+	    return 0;
+    }
+    c -= firstChar;
+
+	if (self->font[FONT_LENGTH] == 0 && self->font[FONT_LENGTH + 1] == 0) {
+	    // zero length is flag indicating fixed width font (array does not contain width data entries)
+	    width = self->font[FONT_FIXED_WIDTH];
+    } else {
+	    // variable width font, read width data
+		width = self->font[FONT_WIDTH_TABLE + c];
+    }
+
+    return width;
 }
 
 static
@@ -549,8 +594,8 @@ static PyMethodDef ssd1306_methods[] = {
 		"rect_fill(x, y, w, h, color)\n\n Draws and fills rect at specified location, width, height and color on OLED display."},
 	{"cursor", (PyCFunction)ssd1306_setCursor, METH_VARARGS,
 		"cursor(x, y)\n\n Set text cursor at specified location."},
-	{"font", (PyCFunction)ssd1306_setFont, METH_VARARGS | METH_KEYWORDS,
-		"font(n, size=1)\n\n Set text font (FONT_5x7, FONT_NUM8x16, etc) and size."},
+	{"font", (PyCFunction)ssd1306_setFont, METH_VARARGS,
+		"font(name)\n\n Set text font name."},
 	{"char", (PyCFunction)ssd1306_drawChar, METH_VARARGS | METH_KEYWORDS,
 		"char(ch, x=0, y=0, color=1)\n\n Draw char at current or specified position with current font and size."},
 	{"write", (PyCFunction)ssd1306_writeString, METH_VARARGS | METH_KEYWORDS,

@@ -53,6 +53,14 @@ ssd.line(0, 0, 127, 20, 1);
 ssd.update()
 ssd.write("SSD1306 I2C", x=5, y=6)
 ssd.update()
+
+ssd.font("Fixed3x5")
+ssd.write("1234567890", x=5, y=9, color=1)
+ssd.font("Arial14")
+ssd.write("1234567890", x=5, y=20, color=1)
+ssd.font("Corsiva12")
+ssd.write("1234567890", x=5, y=40, color=1)
+ssd.update()
 ```
 
 Methods
@@ -98,9 +106,9 @@ Draws and fills rect at specified location, width, height and color on OLED disp
 
 Set text cursor at specified location.
 
-    font(n, size=1)
+    font(name)
 
-Set text font (1 = 5x7) and size.
+Set text font name.
 
     char(ch, x=0, y=0, color=1)
 
