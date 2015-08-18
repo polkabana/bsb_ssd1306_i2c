@@ -102,10 +102,10 @@ Set text cursor at specified location.
 
 Set text font (1 = 5x7) and size.
 
-    char(ch)
+    char(ch, x=0, y=0, color=1)
 
-Draw char at current position with current font and size.
+Set text font (FONT_5x7, FONT_NUM8x16, etc) and size.
 
-    write(string, x=0, y=0)
+    write(string, x=0, y=0, color=1)
 
 Draw string at current or specified position with current font and size.
