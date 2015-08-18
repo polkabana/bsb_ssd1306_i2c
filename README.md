@@ -14,8 +14,12 @@ Use Black-Swift [VirtualBox VM] (http://www.black-swift.com/wiki/index.php?title
 In virtual machine change directory to /home/openwrt/openwrt
 Copy sources to package/bsb_ssd1306_i2c/ directory, for example
 
-Run *make oldconfig* and say yes for new bsb_ssd1306_i2c package.
-Run make *package/bsb_ssd1306_i2c/compile V=s*.
+Run and say yes for new bsb_ssd1306_i2c package:
+```make oldconfig```
+
+Run for compile package:
+```make *package/bsb_ssd1306_i2c/compile V=s*.```
+
 Check bin/ar71xx/packages/base/ for results (like ssd1306-i2c_0.1-1_ar71xx.ipk)
 
 Usage
@@ -32,6 +36,13 @@ insmod i2c-gpio-custom bus0=0,18,19
 This mean that SDA connected to GPIO18 and SCL to GPIO19
 
 Connect your SSD1306 OLED display. Don't forget about pull-up resistors!
+
+Check your connections:
+```
+i2cdetect -y 0
+```
+
+Example programm
 
 ```python
 from ssd1306_i2c import SSD1306
