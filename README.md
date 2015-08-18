@@ -1,28 +1,41 @@
 Python SSD1306
-=============+
+==============
 
 This project contains a python module for interfacing with SSD1306 OLED device connected via I2C bus.
 
-Partialy based on Adafruit Arduino code
+Partially based on Adafruit Arduino code
 
 All code is GPLv2 licensed unless explicitly stated otherwise.
+
+Building
+--------
+
+Use Black-Swift [VirtualBox VM] (http://www.black-swift.com/wiki/index.php?title=C/C%2B%2B_Building_and_Remote_Debugging_with_Eclipse)
+In virtual machine change directory to /home/openwrt/openwrt
+Copy sources to package/bsb_ssd1306_i2c/ directory, for example
+
+Run *make oldconfig* and say yes for new bsb_ssd1306_i2c package.
+Run make *package/bsb_ssd1306_i2c/compile V=s*.
+Check bin/ar71xx/packages/base/ for results (like ssd1306-i2c_0.1-1_ar71xx.ipk)
 
 Usage
 -----
 
 First, setup I2C on your Black Swift board:
 
+```
 opkg install kmod-i2c-gpio-custom i2c-tools
 insmod i2c-dev
 insmod i2c-gpio-custom bus0=0,18,19
+```
 
-This mean than SDA connected to GPIO18 and SCL to GPIO19
+This mean that SDA connected to GPIO18 and SCL to GPIO19
 
 Connect your SSD1306 OLED display. Don't forget about pull-up resistors!
 
 ```python
 from ssd1306_i2c import SSD1306
-ssd = SSD1306(0, 0x3c) # /dev/i2c-0, device addres 0x3c
+ssd = SSD1306(0, 0x3c) # /dev/i2c-0, device address 0x3c
 ssd.clear()
 ssd.circle(25, 25, 15, 1)
 ssd.line(0, 0, 127, 20, 1);
@@ -30,7 +43,6 @@ ssd.update()
 ssd.write("SSD1306 I2C", x=5, y=6)
 ssd.update()
 ```
-
 
 Methods
 -------
@@ -62,6 +74,10 @@ Draws vertical line at specified location, length and color on OLED display.
     line_horisontal(x, y, len, color)
 
 Draws horisontal line at specified location, length and color on OLED display.
+
+    rect(x, y, w, h, color)
+
+Draws rect at specified location, width, height and color on OLED display.
 
     rect_fill(x, y, w, h, color)
 
