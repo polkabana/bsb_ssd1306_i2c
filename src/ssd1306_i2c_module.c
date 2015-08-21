@@ -45,7 +45,7 @@ typedef struct {
 	uint8_t height;
 
 	unsigned char *font;
-	int color, bg_color;
+	int color, bg_color, char_spacing;
 	int cursor_x;
 	int cursor_y;
 	
@@ -97,6 +97,7 @@ ssd1306_init(SSD1306PyObject *self, PyObject *args, PyObject *kwds) {
 	self->cursor_y = 0;
 
 	self->font = System5x7;
+	self->char_spacing = 1;
 
 	//write command to the screen registers.
 	ssd1306_command(self, SSD1306_CMD_DISPLAY_OFF);//display off
@@ -355,15 +356,18 @@ ssd1306_setCursor(SSD1306PyObject *self, PyObject *args) {
 }
 
 static PyObject *
-ssd1306_setFont(SSD1306PyObject *self, PyObject *args) {
-	int i;
+ssd1306_setFont(SSD1306PyObject *self, PyObject *args, PyObject *kwds) {
+	int i, spacing = 1;
 	unsigned char *font;
 	font_info *f = fonts_table;
+	static char *kwlist[] = {"font", "spacing", NULL};
 
-	if (!PyArg_ParseTuple(args, "s",  &font)) {
-		return;
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|i",  kwlist, &font, &spacing)) {
+		return NULL;
 	}
 	
+	self->char_spacing = spacing;
+
 	while (f->name != NULL) {
 		if (strcmp(f->name, font) == 0) {
 			self->font = f->data;
@@ -383,7 +387,7 @@ ssd1306_drawChar(SSD1306PyObject *self, PyObject *args, PyObject *kwds) {
 	static char *kwlist[] = {"ch", "x", "y", "color", NULL};
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwds, "c|iii", kwlist, &ch, &x, &y, &color)) {
-		return;
+		return NULL;
 	}
 	
 	self->cursor_x = x;
@@ -404,7 +408,7 @@ ssd1306_writeString(SSD1306PyObject *self, PyObject *args, PyObject *kwds) {
 	unsigned char *font = self->font;
 	
 	if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|iii", kwlist, &str, &x, &y, &color)) {
-		return;
+		return NULL;
 	}
 	
 	self->cursor_x = x;
@@ -413,15 +417,15 @@ ssd1306_writeString(SSD1306PyObject *self, PyObject *args, PyObject *kwds) {
 
 	for(i=0; i<strlen(str); i++) {
 		ch = str[i];
-		w = ssd1306_charWidth(self, ch);
+		w = ssd1306_charWidth(self, ch) + self->char_spacing;
 		ssd1306_char(self, ch);
 		
-		if ((self->cursor_x + w + 1) <= self->width) {
-			self->cursor_x += w + 1;
+		if ((self->cursor_x + w) <= self->width) {
+			self->cursor_x += w;
 		}
-		else if ((self->cursor_y + font[FONT_HEIGHT] + 1) <= self->height) {
+		else if ((self->cursor_y + font[FONT_HEIGHT] + self->char_spacing) <= self->height) {
 			self->cursor_x = 0;
-			self->cursor_y += font[FONT_HEIGHT] + 1;
+			self->cursor_y += font[FONT_HEIGHT] + self->char_spacing;
 		}
 	}
 
@@ -594,8 +598,8 @@ static PyMethodDef ssd1306_methods[] = {
 		"rect_fill(x, y, w, h, color)\n\n Draws and fills rect at specified location, width, height and color on OLED display."},
 	{"cursor", (PyCFunction)ssd1306_setCursor, METH_VARARGS,
 		"cursor(x, y)\n\n Set text cursor at specified location."},
-	{"font", (PyCFunction)ssd1306_setFont, METH_VARARGS,
-		"font(name)\n\n Set text font name."},
+	{"font", (PyCFunction)ssd1306_setFont, METH_VARARGS | METH_KEYWORDS,
+		"font(name, spacing=1)\n\n Set text font name and char spacing."},
 	{"char", (PyCFunction)ssd1306_drawChar, METH_VARARGS | METH_KEYWORDS,
 		"char(ch, x=0, y=0, color=1)\n\n Draw char at current or specified position with current font and size."},
 	{"write", (PyCFunction)ssd1306_writeString, METH_VARARGS | METH_KEYWORDS,
