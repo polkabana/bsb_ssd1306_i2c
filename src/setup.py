@@ -12,7 +12,7 @@ classifiers = ['Development Status :: 5 - Production/Stable',
                'Topic :: System :: Hardware :: Hardware Drivers']
 
 setup(	name	= "ssd1306_i2c",
-	version		= "0.2",
+	version		= "0.3",
 	description	= "Python bindings for SSD1306 OLED display via I2C bus",
 	# long_description = open('README.md').read() + "\n" + open('CHANGELOG.md').read(),
 	author		= "Aliaksei",

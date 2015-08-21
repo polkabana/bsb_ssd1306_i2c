@@ -8,7 +8,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ssd1306_i2c
-PKG_VERSION:=0.2
+PKG_VERSION:=0.3
 PKG_RELEASE:=1
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -23,7 +23,7 @@ define Package/ssd1306-i2c
   SECTION:=lang
   CATEGORY:=Languages
   TITLE:=ssd1306-i2c
-  URL:=http://github.com/polkabana/ssd1306_i2c
+  URL:=http://github.com/polkabana/bsb_ssd1306_i2c
   DEPENDS:=+python-mini
 endef
 

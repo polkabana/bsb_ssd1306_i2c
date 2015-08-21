@@ -82,6 +82,10 @@ Clear OLED display.
 
 Draws pixel at specified location and color on OLED display.
 
+    circle(x0, y0, radius, color)
+
+Draws circle at specified location, radius and color on LCD display.
+
     line(x0, y0, x1, y1, color)
 
 Draws line at specified locations and color on OLED display.
@@ -106,13 +110,13 @@ Draws and fills rect at specified location, width, height and color on OLED disp
 
 Set text cursor at specified location.
 
-    font(name)
+    font(name, spacing=1)
 
-Set text font name.
+Set text font name and char spacing.
 
     char(ch, x=0, y=0, color=1)
 
-Set text font (FONT_5x7, FONT_NUM8x16, etc) and size.
+Draw char at current or specified position with current font and size.
 
     write(string, x=0, y=0, color=1)
 
