@@ -24,7 +24,7 @@ define Package/ssd1306-i2c
   CATEGORY:=Languages
   TITLE:=ssd1306-i2c
   URL:=http://github.com/polkabana/bsb_ssd1306_i2c
-  DEPENDS:=+python-mini
+  DEPENDS:=+python-light
 endef
 
 define Package/ssd1306-i2c/description
