@@ -7,7 +7,7 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=ssd1306_i2c
+PKG_NAME:=ssd1306-i2c
 PKG_VERSION:=0.3
 PKG_RELEASE:=1
 
