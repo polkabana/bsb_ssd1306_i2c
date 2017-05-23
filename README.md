@@ -20,7 +20,7 @@ Run and say yes for new bsb_ssd1306_i2c package:
 Run for compile package:
 ```make *package/bsb_ssd1306_i2c/compile V=s*.```
 
-Check bin/ar71xx/packages/base/ for results (like ssd1306-i2c_0.1-1_ar71xx.ipk)
+Check bin/brcm2708/packages/base/ for results (like ssd1306-i2c_0.3-1_brcm2708.ipk)
 
 Usage
 -----
@@ -39,14 +39,14 @@ Connect your SSD1306 OLED display. Don't forget about pull-up resistors!
 
 Check your connections:
 ```
-i2cdetect -y 0
+i2cdetect -y 1
 ```
 
 Example programm
 
 ```python
 from ssd1306_i2c import SSD1306
-ssd = SSD1306(0, 0x3c) # /dev/i2c-0, device address 0x3c
+ssd = SSD1306(1, 0x3c) # /dev/i2c-1, device address 0x3c
 ssd.clear()
 ssd.circle(25, 25, 15, 1)
 ssd.line(0, 0, 127, 20, 1);

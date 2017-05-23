@@ -1,5 +1,10 @@
 Changelog
 ---------
+Curent
+===
++ Use i2c Port 1 now as default
++ get it working on OpenWRT Trunk
+
 
 0.3
 ===
